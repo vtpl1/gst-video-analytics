@@ -136,3 +136,22 @@ guint gva_tensor_size(GstGVATensorMeta *meta) {
     }
     return size;
 }
+
+void gva_set_tensor(GstGVATensorMeta *meta, GVAPrecision precision, guint rank, size_t dims[GVA_TENSOR_MAX_RANK],
+                    GVALayout layout, gchar *layer_name, gchar *model_name, void *data, size_t total_bytes,
+                    const gchar *element_id) {
+    meta->precision = precision;
+    meta->layout = layout;
+    meta->rank = rank;
+    if (meta->rank > GVA_TENSOR_MAX_RANK)
+        meta->rank = GVA_TENSOR_MAX_RANK;
+    for (guint i = 0; i < meta->rank; i++) {
+        meta->dims[i] = dims[i];
+    }
+    meta->layer_name = g_strdup(layer_name);
+    meta->model_name = g_strdup(model_name);
+    meta->element_id = element_id;
+    meta->total_bytes = total_bytes;
+    meta->data = g_slice_alloc0(meta->total_bytes);
+    memcpy(meta->data, data, meta->total_bytes);
+}

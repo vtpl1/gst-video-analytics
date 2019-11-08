@@ -296,6 +296,33 @@ RUN  wget -O - ${GST_PLUGIN_VAAPI_REPO} | tar xJ && \
      make install DESTDIR=/home/build && \
      make install
 
+# gst-python
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y \
+    python3-dev \
+    python3-pip \
+    python3-setuptools \
+    python-gi-dev \
+    curl \
+    inetutils-ping \
+    libsoup2.4.1
+
+ARG GST_PYTHON_REPO=https://gstreamer.freedesktop.org/src/gst-python/gst-python-${GST_VER}.tar.xz
+RUN  wget -O - ${GST_PYTHON_REPO} | tar xJ && \
+     cd gst-python-${GST_VER} && \
+     ./autogen.sh \
+        --prefix=/usr \
+        --libdir=/usr/lib/x86_64-linux-gnu \
+        --libexecdir=/usr/lib/x86_64-linux-gnu \
+        --with-pygi-overrides-dir=/usr/lib/python3/dist-packages/gi/overrides \
+        --disable-dependency-tracking \
+        --disable-silent-rules \
+        --with-libpython-dir="/usr/lib/x86_64-linux-gnu/" \
+        PYTHON=/usr/bin/python3 && \
+     make -j $(nproc) && \
+     make install DESTDIR=/home/build && \
+     make install
+
 RUN apt-get install -y -q --no-install-recommends gtk-doc-tools
 
 ARG ENABLE_PAHO_INSTALLATION=false
@@ -371,7 +398,10 @@ libgtk2.0 clinfo \
 \
 libusb-1.0-0-dev libboost-all-dev libjson-c-dev \
 build-essential cmake ocl-icd-opencl-dev wget gcovr vim git gdb ca-certificates libssl-dev uuid-dev \
-    && rm -rf /var/lib/apt/lists/*
+    libgirepository-1.0-1 \
+    python3 python3-wheel python3-pip python3-setuptools python-gi-dev python3.6-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && python3.6 -m pip install numpy opencv-python
 
 # Install
 COPY --from=dldt-build /home/build /
@@ -420,4 +450,5 @@ RUN mkdir -p gst-video-analytics/build \
         && make -j $(nproc) \
         && make install \
         && echo "/usr/lib/gst-video-analytics" >> /etc/ld.so.conf.d/opencv-dldt-gst.conf && ldconfig
-ENV GST_PLUGIN_PATH=/usr/lib/gst-video-analytics/
+ENV GST_PLUGIN_PATH=/usr/lib/gst-video-analytics/:/root/gst-video-analytics/
+ENV PYTHONPATH=/root/gst-video-analytics/python:$PYTHONPATH

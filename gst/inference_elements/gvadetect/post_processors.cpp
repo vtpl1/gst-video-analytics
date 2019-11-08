@@ -136,16 +136,16 @@ gboolean TensorToBBoxSSD(const InferenceBackend::OutputBlob::Ptr &blob, std::vec
     return true;
 }
 
-namespace YoloV2Tiny {
+namespace Yolo {
 struct DetectedObject {
     gfloat x;
     gfloat y;
     gfloat w;
     gfloat h;
-    gint class_id;
+    guint class_id;
     gfloat confidence;
 
-    DetectedObject(gfloat x, gfloat y, gfloat w, gfloat h, gint class_id, gfloat confidence, gfloat h_scale = 1.f,
+    DetectedObject(gfloat x, gfloat y, gfloat w, gfloat h, guint class_id, gfloat confidence, gfloat h_scale = 1.f,
                    gfloat w_scale = 1.f) {
         this->x = (x - w / 2) * w_scale;
         this->y = (y - h / 2) * h_scale;
@@ -154,9 +154,11 @@ struct DetectedObject {
         this->class_id = class_id;
         this->confidence = confidence;
     }
+
     bool operator<(const DetectedObject &other) const {
         return this->confidence < other.confidence;
     }
+
     void clip() {
         this->x = (this->x < 0.0) ? 0.0 : (this->x > 1.0) ? 1.0 : this->x;
         this->y = (this->y < 0.0) ? 0.0 : (this->y > 1.0) ? 1.0 : this->y;
@@ -189,7 +191,7 @@ std::vector<DetectedObject> run_nms(std::vector<DetectedObject> candidates, gdou
             gdouble inter_area = inter_width * inter_height;
             gdouble candidate_area = candidate.w * candidate.h;
 
-            gdouble overlap = inter_area / std::min(candidate_area, first_candidate_area);
+            gdouble overlap = inter_area / (candidate_area + first_candidate_area - inter_area);
             if (overlap > threshold)
                 p_candidate = candidates.erase(p_candidate);
             else
@@ -201,6 +203,42 @@ std::vector<DetectedObject> run_nms(std::vector<DetectedObject> candidates, gdou
     }
 
     return nms_candidates;
+}
+
+void storeObjects(const std::vector<DetectedObject> &objects, const InferenceROI &frame,
+                  GstStructure *layer_post_proc) {
+    double nms_threshold = 0.5;
+    gst_structure_get_double(layer_post_proc, "nms_threshold", &nms_threshold);
+    auto nms_objects = run_nms(objects, nms_threshold);
+
+    GValueArray *labels = nullptr;
+    gst_structure_get_array(layer_post_proc, "labels", &labels);
+
+    const gint image_width = frame.roi.w;
+    const gint image_height = frame.roi.h;
+
+    for (DetectedObject &object : nms_objects) {
+        object.clip();
+        const gchar *label = nullptr;
+        if (labels && object.class_id < labels->n_values) {
+            label = g_value_get_string(labels->values + object.class_id);
+        }
+        GstVideoRegionOfInterestMeta *meta = gst_buffer_add_video_region_of_interest_meta(
+            frame.buffer, label, object.x * image_width, object.y * image_height, object.w * image_width,
+            object.h * image_height);
+
+        GstStructure *s = gst_structure_copy(layer_post_proc);
+        gst_structure_set(s, "confidence", G_TYPE_DOUBLE, object.confidence, "label_id", G_TYPE_INT, object.class_id,
+                          "x_min", G_TYPE_DOUBLE, object.x, "x_max", G_TYPE_DOUBLE, object.x + object.w, "y_min",
+                          G_TYPE_DOUBLE, object.y, "y_max", G_TYPE_DOUBLE, object.y + object.h, NULL);
+
+        gst_video_region_of_interest_meta_add_param(meta, s);
+    }
+
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    if (labels)
+        g_value_array_free(labels);
+    G_GNUC_END_IGNORE_DEPRECATIONS
 }
 
 const size_t NUMBER_OF_CLASSES = 20;
@@ -270,16 +308,14 @@ using RawNetOutExtractor = std::function<void(const float *, const size_t, const
 
 bool TensorToBBoxYoloV2TinyCommon(const InferenceBackend::OutputBlob::Ptr &blob, std::vector<InferenceROI> frames,
                                   GstStructure *layer_post_proc, RawNetOutExtractor extractor) {
-    const char *converter = gst_structure_get_string(layer_post_proc, "converter");
 
     if (frames.size() != 1) {
+        const gchar *converter = gst_structure_get_string(layer_post_proc, "converter");
         GST_ERROR(
             "Batch size not equal to 1 is not supported for this post proc converter: '%s', boxes won't be extracted\n",
             converter);
         return false;
     }
-    int image_width = frames[0].roi.w;
-    int image_height = frames[0].roi.h;
     GstGvaDetect *gva_detect = (GstGvaDetect *)frames[0].gva_base_inference;
 
     static const float K_ANCHOR_SCALES[] = {1.08f, 1.19f, 3.42f, 4.41f, 6.63f, 11.38f, 9.42f, 5.11f, 16.62f, 10.52f};
@@ -325,65 +361,136 @@ bool TensorToBBoxYoloV2TinyCommon(const InferenceBackend::OutputBlob::Ptr &blob,
         }
     }
 
-    double nms_threshold = 0.5;
-    gst_structure_get_double(layer_post_proc, "nms_threshold", &nms_threshold);
-    objects = run_nms(objects, nms_threshold);
+    storeObjects(objects, frames[0], layer_post_proc);
+    return true;
+}
 
-    GValueArray *labels = nullptr;
+int v3EntryIndex(int side, int lcoords, int lclasses, int location, int entry) {
+    int n = location / (side * side);
+    int loc = location % (side * side);
+    return n * side * side * (lcoords + lclasses + 1) + entry * side * side + loc;
+}
 
-    gst_structure_get_array(layer_post_proc, "labels", &labels); // TODO: free in the end?
+} // namespace Yolo
 
-    const char *label = NULL;
-    for (DetectedObject &object : objects) {
-        object.clip();
-
-        label = g_value_get_string(labels->values + object.class_id); // TODO: make me safe please!
-        GstVideoRegionOfInterestMeta *meta = gst_buffer_add_video_region_of_interest_meta(
-            frames[0].buffer, label, object.x * image_width, object.y * image_height, object.w * image_width,
-            object.h * image_height);
-
-        GstStructure *s = gst_structure_copy(layer_post_proc);
-        gst_structure_set(s, "confidence", G_TYPE_DOUBLE, object.confidence, "label_id", G_TYPE_INT, object.class_id,
-                          "x_min", G_TYPE_DOUBLE, object.x, "x_max", G_TYPE_DOUBLE, object.x + object.w, "y_min",
-                          G_TYPE_DOUBLE, object.y, "y_max", G_TYPE_DOUBLE, object.y + object.h, NULL);
-
-        gst_video_region_of_interest_meta_add_param(meta, s);
+bool TensorToBBoxYoloV3(const InferenceBackend::OutputBlob::Ptr &blob, std::vector<InferenceROI> frames,
+                        GstStructure *layer_post_proc) {
+    if (frames.size() != 1) {
+        const gchar *converter = gst_structure_get_string(layer_post_proc, "converter");
+        GST_ERROR(
+            "Batch size not equal to 1 is not supported for this post proc converter: '%s', boxes won't be extracted\n",
+            converter);
+        return false;
     }
+    GstGvaDetect *gva_detect = (GstGvaDetect *)frames[0].gva_base_inference;
+
+    const int coords = 4;
+    const int num = 3;
+    const int classes = 80;
+    const float input_size = 416;
+    const float anchors[] = {10.0f, 13.0f, 16.0f,  30.0f,  33.0f, 23.0f,  30.0f,  61.0f,  62.0f,
+                             45.0f, 59.0f, 119.0f, 116.0f, 90.0f, 156.0f, 198.0f, 373.0f, 326.0f};
+    auto dims = blob->GetDims();
+    if (dims.size() != 4 || dims[2] != dims[3]) {
+        throw std::runtime_error("YoloV3: Invalid tensor dimensions");
+    }
+    const int side = dims[2];
+    int anchor_offset = 0;
+    switch (side) {
+    case 13:
+        anchor_offset = 2 * 6;
+        break;
+    case 26:
+        anchor_offset = 2 * 3;
+        break;
+    case 52:
+        anchor_offset = 2 * 0;
+        break;
+    default:
+        throw std::runtime_error("YoloV3: Invalid output size");
+    }
+
+    const float *output_blob = (const float *)blob->GetData();
+    if (output_blob == nullptr) {
+        GST_ERROR("YoloV3: Blob data pointer is null");
+        return false;
+    }
+
+    std::vector<Yolo::DetectedObject> objects;
+    const int side_square = side * side;
+    for (int i = 0; i < side_square; ++i) {
+        const int row = i / side;
+        const int col = i % side;
+        for (int n = 0; n < num; ++n) {
+
+            const int obj_index = Yolo::v3EntryIndex(side, coords, classes, n * side_square + i, coords);
+            const int box_index = Yolo::v3EntryIndex(side, coords, classes, n * side_square + i, 0);
+
+            const float scale = output_blob[obj_index];
+            if (scale < gva_detect->threshold)
+                continue;
+            const float x = (col + output_blob[box_index + 0 * side_square]) / side * input_size;
+            const float y = (row + output_blob[box_index + 1 * side_square]) / side * input_size;
+
+            const float width = std::exp(output_blob[box_index + 2 * side_square]) * anchors[anchor_offset + 2 * n];
+            const float height =
+                std::exp(output_blob[box_index + 3 * side_square]) * anchors[anchor_offset + 2 * n + 1];
+
+            for (int j = 0; j < classes; ++j) {
+                const int class_index = Yolo::v3EntryIndex(side, coords, classes, n * side_square + i, coords + 1 + j);
+                const float prob = scale * output_blob[class_index];
+                if (prob < gva_detect->threshold)
+                    continue;
+                Yolo::DetectedObject obj(x, y, width, height, j, prob, 1 / input_size, 1 / input_size);
+                objects.push_back(obj);
+            }
+        }
+    }
+
+    Yolo::storeObjects(objects, frames[0], layer_post_proc);
 
     return true;
 }
 
-} // namespace YoloV2Tiny
-
 bool TensorToBBoxYoloV2Tiny(const InferenceBackend::OutputBlob::Ptr &blob, std::vector<InferenceROI> frames,
                             GstStructure *layer_post_proc) {
-    return YoloV2Tiny::TensorToBBoxYoloV2TinyCommon(blob, frames, layer_post_proc, YoloV2Tiny::fillRawNetOut);
+    return Yolo::TensorToBBoxYoloV2TinyCommon(blob, frames, layer_post_proc, Yolo::fillRawNetOut);
 }
 
 bool TensorToBBoxYoloV2TinyMoviTL(const InferenceBackend::OutputBlob::Ptr &blob, std::vector<InferenceROI> frames,
                                   GstStructure *layer_post_proc) {
-    return YoloV2Tiny::TensorToBBoxYoloV2TinyCommon(blob, frames, layer_post_proc, YoloV2Tiny::fillRawNetOutMoviTL);
+    return Yolo::TensorToBBoxYoloV2TinyCommon(blob, frames, layer_post_proc, Yolo::fillRawNetOutMoviTL);
 }
 
-bool ConvertBlobToDetectionResults(const InferenceBackend::OutputBlob::Ptr &blob, std::vector<InferenceROI> frames,
-                                   GstStructure *layer_post_proc) {
+bool ConvertBlobToDetectionResults(const std::string &layer_name, const InferenceBackend::OutputBlob::Ptr &blob,
+                                   std::vector<InferenceROI> frames, GstStructure *layer_post_proc) {
     if (blob == nullptr)
         throw std::runtime_error("Blob is empty during post processing. Cannot access null object.");
     if (layer_post_proc == nullptr)
         throw std::runtime_error("Post proc layer is null during post processing. Cannot access null object.");
 
-    std::string converter = "tensor_to_bbox_ssd"; // default post processing
-    if (gst_structure_has_field(layer_post_proc, "converter"))
+    std::string converter;
+    if (gst_structure_has_field(layer_post_proc, "converter")) {
         converter = (std::string)gst_structure_get_string(layer_post_proc, "converter");
-    else
+    } else {
+        // Check for known output layer name
+        if (layer_name.find("/yolo-v3/") != std::string::npos)
+            converter = "tensor_to_bbox_yolo_v3";
+        else if (layer_name.find("/yolo-v2-tiny/") != std::string::npos)
+            converter = "tensor_to_bbox_yolo_v2_tiny";
+        else
+            converter = "tensor_to_bbox_ssd"; // SSD-like models by default
         gst_structure_set(layer_post_proc, "converter", G_TYPE_STRING, converter.c_str(), NULL);
-
+    }
     static std::map<std::string, std::function<bool(const InferenceBackend::OutputBlob::Ptr &,
                                                     std::vector<InferenceROI>, GstStructure *)>>
-        do_conversion{{"tensor_to_bbox_ssd", TensorToBBoxSSD}, // default post processing
-                      {"DetectionOutput", TensorToBBoxSSD},    // GVA plugin R1.2 backward compatibility
-                      {"tensor_to_bbox_yolo_v2_tiny", TensorToBBoxYoloV2Tiny},
-                      {"tensor_to_bbox_yolo_v2_tiny_moviTL", TensorToBBoxYoloV2TinyMoviTL}};
+        do_conversion{
+            {"tensor_to_bbox_ssd", TensorToBBoxSSD}, // default post processing
+            {"DetectionOutput", TensorToBBoxSSD},    // GVA plugin R1.2 backward compatibility
+            {"tensor_to_bbox_yolo_v2_tiny", TensorToBBoxYoloV2Tiny},
+            {"tensor_to_bbox_yolo_v2_tiny_moviTL", TensorToBBoxYoloV2TinyMoviTL},
+            {"tensor_to_bbox_yolo_v3", TensorToBBoxYoloV3},
+        };
 
     if (do_conversion.find(converter) == do_conversion.end()) {
         // Wrong converter set in model-proc file
@@ -420,7 +527,7 @@ void ExtractDetectionResults(const std::map<std::string, InferenceBackend::Outpu
         }
         gst_structure_set(detection_result, "layer_name", G_TYPE_STRING, layer_name.c_str(), "model_name",
                           G_TYPE_STRING, model_name, NULL);
-        ConvertBlobToDetectionResults(blob, frames, detection_result);
+        ConvertBlobToDetectionResults(layer_name, blob, frames, detection_result);
         gst_structure_free(detection_result);
     }
 }

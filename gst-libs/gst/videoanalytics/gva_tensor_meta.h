@@ -140,6 +140,15 @@ GstGVATensorMeta *find_tensor_meta_ext(GstBuffer *buffer, const char *model_name
  */
 guint gva_tensor_size(GstGVATensorMeta *meta);
 
+/**
+ * @brief This function sets the fields of_GstGVATensorMeta
+ * @param meta _GstGVATensorMeta* to set fields
+ * @return void
+ */
+void gva_set_tensor(GstGVATensorMeta *meta, GVAPrecision precision, guint rank, size_t dims[GVA_TENSOR_MAX_RANK],
+                    GVALayout layout, gchar *layer_name, gchar *model_name, void *data, size_t total_bytes,
+                    const gchar *element_id);
+
 G_END_DECLS
 
 #endif /* __GVA_TENSOR_META_H__ */
