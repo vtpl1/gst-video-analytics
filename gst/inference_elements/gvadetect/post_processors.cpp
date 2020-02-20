@@ -33,6 +33,44 @@ gboolean TensorToBBoxSSD(const std::map<std::string, InferenceBackend::OutputBlo
     gdouble roi_scale = 1.0;
     gst_structure_get_array(detection_result, "labels", &labels);
     gst_structure_get_double(detection_result, "roi_scale", &roi_scale);
+    const GValue *anchors = gst_structure_get_value(detection_result, "anchors");
+    const GValue *roi = gst_structure_get_value(detection_result, "roi");
+
+
+    if(labels)
+    {
+        for (size_t i = 0; i < labels->n_values; i++) {
+            const gchar *label = g_value_get_string(labels->values + i);
+            //g_value_get_double(alignment_points->values + i)
+            GST_FIXME("MONOTOSH label %s", label);
+        }
+    }
+
+    if(anchors)
+    {
+        guint anchorssize = gst_value_array_get_size (anchors);
+        GST_FIXME("MONOTOSH anchor size: %d", anchorssize);
+        for (guint i = 0; i < anchorssize; i++)
+        {
+            const GValue* gvalue = gst_value_array_get_value (anchors, i);
+            gdouble value = g_value_get_double(gvalue);
+            GST_FIXME("MONOTOSH anchor index: %d, item: %f", i, value);
+        }
+    }
+
+    if(roi)
+    {
+        guint roisize = gst_value_array_get_size (roi);
+        GST_FIXME("MONOTOSH roisize: %d", roisize);
+        for (guint i = 0; i < roisize; i++)
+        {
+            const GValue* gvalue = gst_value_array_get_value (roi, i);
+            gdouble value = g_value_get_double(gvalue);
+            GST_FIXME("MONOTOSH roi index: %d, item: %f", i, value);
+        }
+    }
+
+    
 
     // Check whether we can handle this blob instead iterator
     for (const auto &blob_iter : output_blobs) {
