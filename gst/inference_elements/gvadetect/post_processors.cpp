@@ -33,44 +33,7 @@ gboolean TensorToBBoxSSD(const std::map<std::string, InferenceBackend::OutputBlo
     gdouble roi_scale = 1.0;
     gst_structure_get_array(detection_result, "labels", &labels);
     gst_structure_get_double(detection_result, "roi_scale", &roi_scale);
-    const GValue *anchors = gst_structure_get_value(detection_result, "anchors");
-    const GValue *roi = gst_structure_get_value(detection_result, "roi");
 
-
-    if(labels)
-    {
-        for (size_t i = 0; i < labels->n_values; i++) {
-            const gchar *label = g_value_get_string(labels->values + i);
-            //g_value_get_double(alignment_points->values + i)
-            GST_FIXME("MONOTOSH label %s", label);
-        }
-    }
-
-    if(anchors)
-    {
-        guint anchorssize = gst_value_array_get_size (anchors);
-        GST_FIXME("MONOTOSH anchor size: %d", anchorssize);
-        for (guint i = 0; i < anchorssize; i++)
-        {
-            const GValue* gvalue = gst_value_array_get_value (anchors, i);
-            gdouble value = g_value_get_double(gvalue);
-            GST_FIXME("MONOTOSH anchor index: %d, item: %f", i, value);
-        }
-    }
-
-    if(roi)
-    {
-        guint roisize = gst_value_array_get_size (roi);
-        GST_FIXME("MONOTOSH roisize: %d", roisize);
-        for (guint i = 0; i < roisize; i++)
-        {
-            const GValue* gvalue = gst_value_array_get_value (roi, i);
-            gdouble value = g_value_get_double(gvalue);
-            GST_FIXME("MONOTOSH roi index: %d, item: %f", i, value);
-        }
-    }
-
-    
 
     // Check whether we can handle this blob instead iterator
     for (const auto &blob_iter : output_blobs) {
@@ -422,15 +385,45 @@ bool TensorToBBoxYoloV3(const std::map<std::string, InferenceBackend::OutputBlob
                   converter);
         return false;
     }
+
+    ///
+    GValueArray *labels = nullptr;
+    gst_structure_get_array(detection_result, "labels", &labels);
+    const GValue *ganchors = gst_structure_get_value(detection_result, "anchors");
+    std::vector<int> anchors;
+    if(ganchors)
+    {
+        for (guint i = 0; i < gst_value_array_get_size (ganchors); i++)
+        {
+            const GValue* g_anchor_val = gst_value_array_get_value (ganchors, i);
+            gint g_anchor_int_val = g_value_get_int(g_anchor_val);
+            anchors.push_back(g_anchor_int_val);
+        }
+    }
+    ///
+
     GstGvaDetect *gva_detect = (GstGvaDetect *)frames[0].gva_base_inference;
     std::vector<Yolo::DetectedObject> objects;
 
     const int coords = 4;
     const int num = 3;
-    const int classes = 80;
+    int classes = 80;
     const float input_size = 416;
-    const float anchors[] = {10.0f, 13.0f, 16.0f,  30.0f,  33.0f, 23.0f,  30.0f,  61.0f,  62.0f,
+    if (anchors.size() == 0)
+    {
+        const float anchors_old[] = {10.0f, 13.0f, 16.0f,  30.0f,  33.0f, 23.0f,  30.0f,  61.0f,  62.0f,
                              45.0f, 59.0f, 119.0f, 116.0f, 90.0f, 156.0f, 198.0f, 373.0f, 326.0f};
+        for (auto a: anchors_old)
+        {
+            anchors.push_back(a);
+        }
+    }
+
+    if(labels)
+    {
+        classes = labels->n_values;
+    }
+
     for (const auto &blob_iter : output_blobs) {
         InferenceBackend::OutputBlob::Ptr blob = blob_iter.second;
         if (!blob) {
@@ -443,18 +436,34 @@ bool TensorToBBoxYoloV3(const std::map<std::string, InferenceBackend::OutputBlob
         }
         const int side = dims[2];
         int anchor_offset = 0;
-        switch (side) {
-        case 13:
-            anchor_offset = 2 * 6;
-            break;
-        case 26:
-            anchor_offset = 2 * 3;
-            break;
-        case 52:
-            anchor_offset = 2 * 0;
-            break;
-        default:
-            throw std::runtime_error("YoloV3: Invalid output size");
+
+        if (anchors.size() == 18) {        // YoloV3
+            switch (side) {
+                case 13:
+                    anchor_offset = 2 * 6;
+                    break;
+                case 26:
+                    anchor_offset = 2 * 3;
+                    break;
+                case 52:
+                    anchor_offset = 2 * 0;
+                    break;
+                default:
+                    throw std::runtime_error("Invalid output size");
+            }
+        } else if (anchors.size() == 12) { // tiny-YoloV3
+            switch (side) {
+                case 13:
+                    anchor_offset = 2 * 3;
+                    break;
+                case 26:
+                    anchor_offset = 2 * 0;
+                    break;
+                default:
+                    throw std::runtime_error("Invalid output size");
+            }
+        } else { //??????
+            throw std::runtime_error("YoloV3: Invalid anchor size");
         }
 
         const float *output_blob = (const float *)blob->GetData();
@@ -495,7 +504,10 @@ bool TensorToBBoxYoloV3(const std::map<std::string, InferenceBackend::OutputBlob
         }
     }
     Yolo::storeObjects(objects, frames[0], detection_result);
-
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    if (labels)
+        g_value_array_free(labels);
+    G_GNUC_END_IGNORE_DEPRECATIONS
     return true;
 }
 
@@ -565,10 +577,11 @@ void ExtractDetectionResults(const std::map<std::string, InferenceBackend::Outpu
                 layer_name = layer_out.first;
                 detection_result = gst_structure_copy(model_proc.at(layer_name));
                 gst_structure_set_name(detection_result, "detection");
-            }
+            }            
         }
         if (!detection_result) {
             layer_name = output_blobs.cbegin()->first;
+            std::cout << "value of layer name1 : " << layer_name << std::endl;
             detection_result = gst_structure_new_empty("detection");
         }
     }

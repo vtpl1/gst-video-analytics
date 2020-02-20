@@ -7,6 +7,7 @@
 cmake_minimum_required (VERSION 3.1)
 
 project(VA_GStreamer_Plugins)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT(UNIX))
     message(FATAL_ERROR "Only UNIX supported")
