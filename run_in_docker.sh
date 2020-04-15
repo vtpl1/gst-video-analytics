@@ -18,7 +18,7 @@ docker run -it --rm --privileged --net=host --device /dev/dri \
     \
     -v ~/WorkFiles/vtpl1/gst-video-analytics:/root/gst-video-analytics \
     \
-    vtpl/gst-video-analytics:2
+    vtpl/gst-video-analytics
 
 #./samples/shell/face_detection_and_classification.sh $VIDEO_EXAMPLES_DIR/3.mp4
 #./scripts/build.sh

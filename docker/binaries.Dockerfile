@@ -221,7 +221,7 @@ RUN  wget -O - ${GST_PLUGIN_VAAPI_REPO} | tar xJ && \
 
 RUN apt-get install -y -q --no-install-recommends gtk-doc-tools
 
-ARG ENABLE_PAHO_INSTALLATION=false
+ARG ENABLE_PAHO_INSTALLATION=true
 ARG PAHO_VER=1.3.0
 ARG PAHO_REPO=https://github.com/eclipse/paho.mqtt.c/archive/v${PAHO_VER}.tar.gz
 RUN if [ "$ENABLE_PAHO_INSTALLATION" = "true" ] ; then \
@@ -364,8 +364,14 @@ ENV HDDL_INSTALL_DIR=/opt/intel/dldt/inference-engine/external/hddl
 ARG GIT_INFO
 ARG SOURCE_REV
 
+RUN apt update && apt install -y sudo nano libgirepository1.0-dev
+RUN pip3 install --upgrade pip setuptools
+RUN python3 -m pip install opencv-python numpy cython progress pycairo PyGObject requests paho-mqtt pycrypto pillow
+RUN cd /opt/intel/openvino/deployment_tools/model_optimizer/install_prerequisites && ./install_prerequisites_tf.sh
+RUN cd /opt/intel/openvino/deployment_tools/model_optimizer/install_prerequisites && ./install_prerequisites_onnx.sh
+
 COPY . gst-video-analytics
-ARG ENABLE_PAHO_INSTALLATION=false
+ARG ENABLE_PAHO_INSTALLATION=true
 ARG ENABLE_RDKAFKA_INSTALLATION=false
 ARG EXTERNAL_GVA_BUILD_FLAGS
 
@@ -384,12 +390,10 @@ RUN mkdir -p gst-video-analytics/build \
         .. \
         && make -j $(nproc) \
         && make install \
-        && cd .. && rm -rf build \
+        && cd ../python && python3 -m pip install . \
+        && cd ../.. && rm -rf gst-video-analytics \
         && echo "/usr/lib/gst-video-analytics" >> /etc/ld.so.conf.d/opencv-dldt-gst.conf && ldconfig
 ENV GST_PLUGIN_PATH=/usr/lib/gst-video-analytics/
-RUN apt update && apt install -y sudo nano libgirepository1.0-dev
-RUN pip3 install --upgrade pip setuptools
-RUN python3 -m pip install opencv-python numpy cython progress pycairo PyGObject requests paho-mqtt pycrypto pillow
-RUN cd /opt/intel/openvino/deployment_tools/model_optimizer/install_prerequisites && ./install_prerequisites_tf.sh
-RUN cd /opt/intel/openvino/deployment_tools/model_optimizer/install_prerequisites && ./install_prerequisites_onnx.sh
 
+# COPY ./python/gstgva /gstgva
+# ENV PYTHONPATH=/gstgva
