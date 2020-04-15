@@ -10,6 +10,7 @@
       "layer_name": "detection_out",
       "converter": "tensor_to_bbox_ssd",
       "labels": [
+        "",
         "LP",
         "NoHelmet",
         "Helmet",

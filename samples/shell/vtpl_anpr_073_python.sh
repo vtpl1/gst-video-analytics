@@ -22,9 +22,13 @@ source $BASEDIR/scripts/path_extractor.sh
 
 INPUT=file:///root/video-examples/ANPR/1.AVI
 
-MODEL1=frozen_073
+#MODEL1=frozen_073
 
-MODEL1_PROC=mo073_model_proc
+#MODEL1_PROC=mo073_model_proc
+
+MODEL1=onnx_124
+
+MODEL1_PROC=mo073_onnx_124_model_proc
 
 MODEL2=frozen_061
 
