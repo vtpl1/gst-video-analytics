@@ -45,10 +45,12 @@ typedef struct _GvaBaseInference {
     // other fields
     GstVideoInfo *info;
     gboolean is_full_frame;
+    gboolean is_detector;
 
     InferenceImpl *inference;
 
     IsROIClassificationNeededFunction is_roi_classification_needed;
+    IsROIDetectionNeededFunction is_roi_detection_needed;
     PreProcFunction pre_proc;
     GetROIPreProcFunction get_roi_pre_proc;
     PostProcFunction post_proc;

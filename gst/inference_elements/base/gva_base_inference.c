@@ -296,8 +296,10 @@ void gva_base_inference_init(GvaBaseInference *base_inference) {
     base_inference->initialized = FALSE;
     base_inference->info = NULL;
     base_inference->is_full_frame = TRUE;
+    base_inference->is_detector = FALSE;
     base_inference->inference = NULL;
     base_inference->is_roi_classification_needed = NULL;
+    base_inference->is_roi_detection_needed = NULL;
     base_inference->pre_proc = NULL;
     base_inference->get_roi_pre_proc = NULL;
     base_inference->post_proc = NULL;

@@ -1,0 +1,26 @@
+{
+  "json_schema_version": 1.0,
+  "input_preproc": [
+    {
+      "color_format": "BGR"
+    }
+  ],
+  "output_postproc": [
+    {
+      "layer_name": "detector/yolo-v3-tiny/Conv_12/BiasAdd/YoloRegion",
+      "converter": "tensor_to_bbox_yolo_v3",
+      "labels": [
+        "LP",
+        "NoHelmet",
+        "Helmet",
+        "Bike",
+        "Auto",
+        "Car",
+        "HV",
+        "Bicycle",
+        "Human"
+      ],
+      "anchors":[29, 30,  68, 32,  39, 69,  72,157, 202,166, 233,352]
+    }
+  ]
+}

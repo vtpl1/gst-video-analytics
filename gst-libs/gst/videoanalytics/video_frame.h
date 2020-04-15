@@ -391,8 +391,7 @@ class VideoFrame {
     std::unique_ptr<MappedMat> data(GstMapFlags flag = GST_MAP_READWRITE) {
         return std::unique_ptr<MappedMat>(new MappedMat(buffer, info.get(), flag));
     }
-
-  private:
+    
     // TODO: move to C and use in Python via ctypes
     static bool get_label_by_label_id(GstStructure *region_tensor, int label_id, const gchar **out_label) {
         *out_label = "";
@@ -406,6 +405,8 @@ class VideoFrame {
         }
         return false;
     }
+  private:
+
 
     void clip(int &x, int &y, int &w, int &h) {
         x = (x < 0) ? 0 : (x > info->width) ? info->width : x;

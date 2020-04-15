@@ -335,6 +335,7 @@ build-essential cmake ocl-icd-opencl-dev wget gcovr vim git gdb ca-certificates 
 
 # Install
 COPY --from=dldt-build /home/build /
+COPY --from=dldt-build /opt/intel /opt/intel
 COPY --from=gst-build /home/build /
 
 RUN echo "\
@@ -383,5 +384,12 @@ RUN mkdir -p gst-video-analytics/build \
         .. \
         && make -j $(nproc) \
         && make install \
+        && cd .. && rm -rf build \
         && echo "/usr/lib/gst-video-analytics" >> /etc/ld.so.conf.d/opencv-dldt-gst.conf && ldconfig
 ENV GST_PLUGIN_PATH=/usr/lib/gst-video-analytics/
+RUN apt update && apt install -y sudo nano libgirepository1.0-dev
+RUN pip3 install --upgrade pip setuptools
+RUN python3 -m pip install opencv-python numpy cython progress pycairo PyGObject requests paho-mqtt pycrypto pillow
+RUN cd /opt/intel/openvino/deployment_tools/model_optimizer/install_prerequisites && ./install_prerequisites_tf.sh
+RUN cd /opt/intel/openvino/deployment_tools/model_optimizer/install_prerequisites && ./install_prerequisites_onnx.sh
+

@@ -395,11 +395,22 @@ GstFlowReturn InferenceImpl::TransformFrameIp(GvaBaseInference *gva_base_inferen
             full_frame_meta.h = info->height;
             metas.push_back(&full_frame_meta);
         } else {
-            GVA::VideoFrame video_frame(buffer, info);
+            //GST_ERROR("MONOTOSH: regions DON'T exists");
+            GVA::VideoFrame video_frame(buffer, info);            
             for (GVA::RegionOfInterest &region : video_frame.regions()) {
-                if (!gva_base_inference->is_roi_classification_needed ||
+
+                if (!gva_base_inference->is_roi_classification_needed &&
+                    !gva_base_inference->is_roi_detection_needed) {
+                    metas.push_back(region.meta());
+                }
+                if (gva_base_inference->is_roi_classification_needed &&
                     gva_base_inference->is_roi_classification_needed(gva_base_inference, frame_num, buffer,
-                                                                     region.meta())) {
+                                                                      region.meta())) {
+                    metas.push_back(region.meta());
+                }
+                if (gva_base_inference->is_roi_detection_needed &&
+                    gva_base_inference->is_roi_detection_needed(gva_base_inference, frame_num, buffer,
+                                                                      region.meta())) {
                     metas.push_back(region.meta());
                 }
             }

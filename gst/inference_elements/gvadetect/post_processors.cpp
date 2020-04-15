@@ -9,6 +9,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <sstream>
 #include <vector>
 
 #include <gst/gst.h>
@@ -18,6 +19,7 @@
 #include "post_processors.h"
 #include "post_processors_util.h"
 #include "video_frame.h"
+#include "gva_utils.h"
 
 #define UNUSED(x) (void)(x)
 
@@ -213,10 +215,48 @@ void storeObjects(std::vector<DetectedObject> &objects, const InferenceFrame &fr
 
     GVA::VideoFrame video_frame(frame.buffer, frame.info);
 
-    for (DetectedObject &object : objects) {
-        video_frame.add_region(object.x, object.y, object.w, object.h, object.class_id, object.confidence,
-                               gst_structure_copy(detection_result)); // each ROI gets its own copy, which is then
-                                                                      // owned by GstVideoRegionOfInterestMeta
+    GstGvaDetect *gva_detect = (GstGvaDetect *)frame.gva_base_inference;
+    if (gva_detect->base_inference.is_full_frame) {
+        for (DetectedObject &object : objects) {
+            video_frame.add_region(object.x, object.y, object.w, object.h, object.class_id, object.confidence,
+                                gst_structure_copy(detection_result)); // each ROI gets its own copy, which is then
+                                                                        // owned by GstVideoRegionOfInterestMeta            
+        }
+    } else {
+        // find meta
+        auto current_roi = &frame.roi;
+        gint roi_id = 0;
+        get_object_id(const_cast<GstVideoRegionOfInterestMeta *>(current_roi), &roi_id);
+        //std::stringstream oss;
+        for (auto &roi : video_frame.regions()) {
+            auto *meta = roi.meta();
+            gint meta_id = 0;
+            get_object_id(meta, &meta_id);
+            if (meta->x == current_roi->x && meta->y == current_roi->y && meta->w == current_roi->w &&
+                meta->h == current_roi->h && meta_id == roi_id) {
+                GVA::Tensor classification_result = roi.add_tensor("ocr");
+                std::stringstream oss;
+                oss << "[";
+                int i = 0;
+                for (DetectedObject &object : objects) {
+                    // video_frame.add_region(object.x, object.y, object.w, object.h, object.class_id, object.confidence,
+                    //             gst_structure_copy(detection_result)); // each ROI gets its own copy, which is then
+                                                                         // owned by GstVideoRegionOfInterestMeta
+                    const gchar *label;                                                     
+                    GVA::VideoFrame::get_label_by_label_id(detection_result, object.class_id, &label);
+                    if (i > 0)
+                        oss << ",";
+                    oss << "{";
+                    oss << "\"x\":" << object.x << ",\"y\":" << object.y << ",\"w\":" << object.w << ",\"h\":" << object.h;
+                    oss << ",\"id\":\"" << label << "\",\"prob\":" << object.confidence;
+                    oss << "}";
+                    i++;
+                }
+                oss << "]";
+                classification_result.set_string("result", oss.str().c_str());
+                break;
+            }
+        }
     }
 
     G_GNUC_BEGIN_IGNORE_DEPRECATIONS

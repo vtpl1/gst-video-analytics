@@ -115,6 +115,6 @@ class RegionOfInterest(object):
         while param:
             tensor_structure = param.contents.data
             # "object_id" is used to store ROI id for tracking
-            if not libgst.gst_structure_has_name(tensor_structure, "object_id".encode('utf-8')):
+            if True: #not libgst.gst_structure_has_name(tensor_structure, "object_id".encode('utf-8')):
                 yield Tensor(tensor_structure)
             param = param.contents.next

@@ -75,11 +75,14 @@ typedef void (*PostProcFunction)(const std::map<std::string, InferenceBackend::O
 typedef bool (*IsROIClassificationNeededFunction)(GvaBaseInference *gva_base_inference, guint current_num_frame,
                                                   GstBuffer *buffer, GstVideoRegionOfInterestMeta *roi);
 
+typedef bool (*IsROIDetectionNeededFunction)(GvaBaseInference *gva_base_inference, guint current_num_frame,
+                                                  GstBuffer *buffer, GstVideoRegionOfInterestMeta *roi);
 #else // __cplusplus
 
 typedef void *PreProcFunction;
 typedef void *PostProcFunction;
 typedef void *GetROIPreProcFunction;
 typedef void *IsROIClassificationNeededFunction;
+typedef void *IsROIDetectionNeededFunction;
 
 #endif // __cplusplus

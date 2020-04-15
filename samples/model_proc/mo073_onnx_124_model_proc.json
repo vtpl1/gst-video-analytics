@@ -1,0 +1,25 @@
+{
+  "json_schema_version": 1.0,
+  "input_preproc": [
+    {
+      "color_format": "BGR"
+    }
+  ],
+  "output_postproc": [
+    {
+      "layer_name": "detection_out",
+      "converter": "tensor_to_bbox_ssd",
+      "labels": [
+        "LP",
+        "NoHelmet",
+        "Helmet",
+        "Bike",
+        "Auto",
+        "Car",
+        "HV",
+        "Bicycle",
+        "Human"
+      ]
+    }
+  ]
+}
