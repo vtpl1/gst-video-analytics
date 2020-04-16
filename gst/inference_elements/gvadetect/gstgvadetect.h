@@ -25,7 +25,6 @@ G_BEGIN_DECLS
 
 typedef struct _GstGvaDetect {
     GvaBaseInference base_inference;
-    //properties
     gchar *object_class;
     double threshold;
 } GstGvaDetect;

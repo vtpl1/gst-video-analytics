@@ -2,8 +2,6 @@
 .gitignore
 build/
 _release/
-# Python's Byte-compiled / optimized / DLL files
-**/__pycache__
 docker/**/*.tgz
 docker/**/*.tar.gz
 .vscode

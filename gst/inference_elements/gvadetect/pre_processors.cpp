@@ -74,10 +74,10 @@ bool IsROIDetectionNeeded(GvaBaseInference *gva_base_inference, guint current_nu
     GstGvaDetect *gva_detect = (GstGvaDetect *)gva_base_inference;
     if (gva_detect->object_class[0]) {
         static std::map<std::string, std::vector<std::string>> elemets_object_classes;
-        auto it = elemets_object_classes.find(gva_base_inference->inference_id);
+        auto it = elemets_object_classes.find(gva_base_inference->model_instance_id);
         if (it == elemets_object_classes.end())
             it = elemets_object_classes.insert(
-                it, {gva_base_inference->inference_id, SplitString(gva_detect->object_class, ',')});
+                it, {gva_base_inference->model_instance_id, SplitString(gva_detect->object_class, ',')});
 
         auto compare_quark_string = [roi](const std::string &str) {
             const gchar *roi_type = roi->roi_type ? g_quark_to_string(roi->roi_type) : "";

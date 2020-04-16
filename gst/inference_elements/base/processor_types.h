@@ -33,29 +33,29 @@ struct InferenceFrame {
         buffer = _buff;
         roi = _roi;
         gva_base_inference = _gbi;
-        info = (_info != nullptr) ? gst_video_info_copy(_info) : nullptr;
+        info = (_info) ? gst_video_info_copy(_info) : nullptr;
     }
     InferenceFrame(const InferenceFrame &inf) {
         buffer = inf.buffer;
         roi = inf.roi;
         gva_base_inference = inf.gva_base_inference;
-        this->info = (inf.info != nullptr) ? gst_video_info_copy(inf.info) : nullptr;
+        this->info = (inf.info) ? gst_video_info_copy(inf.info) : nullptr;
     }
     InferenceFrame &operator=(const InferenceFrame &rhs) {
         buffer = rhs.buffer;
         roi = rhs.roi;
         gva_base_inference = rhs.gva_base_inference;
-        if (this->info != nullptr) {
+        if (this->info) {
             gst_video_info_free(this->info);
             this->info = nullptr;
         }
-        if (rhs.info != nullptr)
+        if (rhs.info)
             this->info = gst_video_info_copy(rhs.info);
 
         return *this;
     }
     ~InferenceFrame() {
-        if (info != nullptr) {
+        if (info) {
             gst_video_info_free(info);
             info = nullptr;
         }
@@ -74,7 +74,6 @@ typedef void (*PostProcFunction)(const std::map<std::string, InferenceBackend::O
 
 typedef bool (*IsROIClassificationNeededFunction)(GvaBaseInference *gva_base_inference, guint current_num_frame,
                                                   GstBuffer *buffer, GstVideoRegionOfInterestMeta *roi);
-
 typedef bool (*IsROIDetectionNeededFunction)(GvaBaseInference *gva_base_inference, guint current_num_frame,
                                                   GstBuffer *buffer, GstVideoRegionOfInterestMeta *roi);
 #else // __cplusplus
@@ -84,5 +83,4 @@ typedef void *PostProcFunction;
 typedef void *GetROIPreProcFunction;
 typedef void *IsROIClassificationNeededFunction;
 typedef void *IsROIDetectionNeededFunction;
-
 #endif // __cplusplus

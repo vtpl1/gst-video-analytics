@@ -13,7 +13,6 @@
 #include "gstgvadetect.h"
 #include "gva_caps.h"
 #include "post_processors.h"
-
 #include "pre_processors.h"
 
 #define ELEMENT_LONG_NAME "Object detection (generates GstVideoRegionOfInterestMeta)"
@@ -24,6 +23,7 @@ enum {
     PROP_THRESHOLD,
     PROP_IS_FULL_FRAME,
     PROP_OBJECT_CLASS
+
 };
 
 #define DEFALUT_MIN_THRESHOLD 0.
@@ -38,9 +38,6 @@ GST_DEBUG_CATEGORY_STATIC(gst_gva_detect_debug_category);
 G_DEFINE_TYPE_WITH_CODE(GstGvaDetect, gst_gva_detect, GST_TYPE_GVA_BASE_INFERENCE,
                         GST_DEBUG_CATEGORY_INIT(gst_gva_detect_debug_category, "gvadetect", 0,
                                                 "debug category for gvadetect element"));
-
-static void gst_gva_detect_finalize(GObject *);
-static void gst_gva_detect_cleanup(GstGvaDetect *);
 
 void gst_gva_detect_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec) {
     GstGvaDetect *gvadetect = (GstGvaDetect *)(object);
@@ -98,29 +95,34 @@ void gst_gva_detect_class_init(GstGvaDetectClass *klass) {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     gobject_class->set_property = gst_gva_detect_set_property;
     gobject_class->get_property = gst_gva_detect_get_property;
-    gobject_class->finalize = gst_gva_detect_finalize;
+    
+    g_object_class_install_property(
+        gobject_class, PROP_THRESHOLD,
+        g_param_spec_float("threshold", "Threshold",
+                           "Threshold for detection results. Only regions of interest "
+                           "with confidence values above the threshold will be added to the frame",
+                           DEFALUT_MIN_THRESHOLD, DEFALUT_MAX_THRESHOLD, DEFALUT_THRESHOLD,
+                           (GParamFlags)(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+    g_object_class_install_property(
+        gobject_class, PROP_IS_FULL_FRAME,
+        g_param_spec_boolean("is-full-frame", 
+                            "Process full frame", "Process on full frame, must be TRUE for first detector and FALSE for consecutive detectors",
+                            DEFAULT_IS_FULL_FRAME, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+    g_object_class_install_property(
+        gobject_class, PROP_OBJECT_CLASS,
+        g_param_spec_string("object-class", "ObjectClass", "Object class",
+                            DEFAULT_OBJECT_CLASS,
+                            (GParamFlags)(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 
-    g_object_class_install_property(gobject_class, PROP_THRESHOLD,
-                                    g_param_spec_float("threshold", "Threshold", "Threshold for inference",
-                                                       DEFALUT_MIN_THRESHOLD, DEFALUT_MAX_THRESHOLD, DEFALUT_THRESHOLD,
-                                                       (GParamFlags)(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
-    g_object_class_install_property(gobject_class, PROP_IS_FULL_FRAME,
-                                    g_param_spec_boolean("is-full-frame", 
-                                    "Process full frame", "Process on full frame, must be TRUE for first detector and FALSE for consecutive detectors",
-                                    DEFAULT_IS_FULL_FRAME, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-    g_object_class_install_property(gobject_class, PROP_OBJECT_CLASS,
-                                    g_param_spec_string("object-class", "ObjectClass", "Object class",
-                                                        DEFAULT_OBJECT_CLASS,
-                                                        (GParamFlags)(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 }
 
 void gst_gva_detect_init(GstGvaDetect *gvadetect) {
     GST_DEBUG_OBJECT(gvadetect, "gst_gva_detect_init");
     GST_DEBUG_OBJECT(gvadetect, "%s", GST_ELEMENT_NAME(GST_ELEMENT(gvadetect)));
 
-    gvadetect->base_inference.is_full_frame = DEFAULT_IS_FULL_FRAME;
-    gvadetect->base_inference.is_detector = TRUE;
     gvadetect->threshold = DEFALUT_THRESHOLD;
+    gvadetect->base_inference.post_proc = EXTRACT_DETECTION_RESULTS;
+    gvadetect->base_inference.is_full_frame = DEFAULT_IS_FULL_FRAME;
     gvadetect->object_class = g_strdup(DEFAULT_OBJECT_CLASS);
     gvadetect->base_inference.get_roi_pre_proc = INPUT_PRE_PROCESS_DETECTION;
     gvadetect->base_inference.post_proc = EXTRACT_DETECTION_RESULTS;

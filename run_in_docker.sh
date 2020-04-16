@@ -16,7 +16,8 @@ docker run -it --rm --privileged --net=host --device /dev/dri \
     -v ~/gva/data/video:/root/video-examples:ro \
     -e VIDEO_EXAMPLES_DIR=/root/video-examples \
     \
-    -v ~/WorkFiles/vtpl1/gst-video-analytics:/root/gst-video-analytics \
+    -v `pwd`:/root/gst-video-analytics \
+    -w /root/gst-video-analytics/samples \
     \
     vtpl/gst-video-analytics
 
