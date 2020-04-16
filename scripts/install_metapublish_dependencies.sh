@@ -26,13 +26,4 @@ make install
 cd ..
 rm -rf librdkafka-1.1.0
 
-wget -O - https://pocoproject.org/releases/poco-1.10.1/poco-1.10.1-all.tar.gz | tar -xz
-cd poco-1.10.1-all
-cmake . -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE -DPOCO_STATIC=ON -DENABLE_DATA_MYSQL=OFF -DENABLE_TESTS=OFF -DENABLE_CRYPTO=ON -DENABLE_PAGECOMPILER=OFF -DENABLE_NETSSL=ON -DENABLE_PAGECOMPILER_FILE2PAGE=OFF -DPOCO_MT=OFF
-cmake --build . --config Release j 8
-make install
-cd ..
-rm -rf poco-1.10.1-all
-
-
 cd $CURDIR

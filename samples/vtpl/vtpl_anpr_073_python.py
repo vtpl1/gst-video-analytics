@@ -28,19 +28,19 @@ _args.add_argument("-i", "--input", help="Required. Path to input video file",
 #/root/common_models/073/ie/FP32/frozen_073.xml
 _args.add_argument("-d", "--detection_model",
                    default="/root/common_models/onnx_9_models/onnx_124.xml",
-                   required=True, type=str)
+                   required=False, type=str)
 #/root/gst-video-analytics/scripts/../samples/model_proc/mo073_model_proc.json
 #/root/gst-video-analytics/scripts/../samples/model_proc/mo073_onnx_124_model_proc.json
 
 _args.add_argument("-d_p", "--detection_post_processing",
-                   default="/root/gst-video-analytics/scripts/../samples/model_proc/mo073_onnx_124_model_proc.json",
-                   required=True, type=str)
+                   default="./mo073_onnx_124_model_proc.json",
+                   required=False, type=str)
 _args.add_argument("-d_2", "--detection_ocr_model",
-                   default="/root/common_models/073/ie/FP32/frozen_061.xml",
-                   required=True, type=str)
+                   default="/root/common_models/061/ie/FP32/frozen_061.xml",
+                   required=False, type=str)
 _args.add_argument("-d_2_p", "--detection_ocr_post_processing",
-                   default="/root/gst-video-analytics/scripts/../samples/model_proc/mo061_model_proc.json",
-                   required=True, type=str)
+                   default="./mo061_model_proc.json",
+                   required=False, type=str)
 
 args = parser.parse_args()
 global_pipeline = None
@@ -48,9 +48,9 @@ global_pipeline = None
 def create_launch_string():
     return 'uridecodebin uri={} ! \
     videoconvert ! capsfilter caps=\"video/x-raw,format=BGRx\" ! \
-    gvadetect inference-id=inf_detect model={} model-proc={} device=GPU pre-proc=ie threshold=0.25 ! queue ! \
-    gvatrack tracking-type=iou ! queue ! \
-    gvadetect inference-id=inf_detect_ocr model={} model-proc={} device=GPU pre-proc=ie is-full-frame=false object-class="LP1" ! queue ! \
+    gvadetect model-instance-id=inf_detect model={} model-proc={} device=GPU pre-process-backend=ie threshold=0.25 ! queue ! \
+    gvatrack tracking-type=short-term ! queue ! \
+    gvadetect model-instance-id=inf_detect_ocr model={} model-proc={} device=GPU pre-process-backend=ie is-full-frame=false object-class="LP" ! queue ! \
     gvawatermark name=gvawatermark ! videoconvert ! gvafpscounter ! \
     fakesink sync=false'.format(args.input, 
                                 args.detection_model,
@@ -61,9 +61,9 @@ def create_launch_string():
 def create_launch_string_disp():
     return 'uridecodebin uri={} ! \
     videoconvert ! capsfilter caps=\"video/x-raw,format=BGRx\" ! \
-    gvadetect inference-id=inf_detect model={} model-proc={} device=GPU pre-proc=ie threshold=0.25 ! queue ! \
-    gvatrack tracking-type=iou ! queue ! \
-    gvadetect inference-id=inf_detect_ocr model={} model-proc={} device=GPU pre-proc=ie is-full-frame=false object-class="LP" ! queue ! \
+    gvadetect model-instance-id=inf_detect model={} model-proc={} device=GPU pre-process-backend=ie threshold=0.25 ! queue ! \
+    gvatrack tracking-type=short-term ! queue ! \
+    gvadetect model-instance-id=inf_detect_ocr model={} model-proc={} device=GPU pre-process-backend=ie is-full-frame=false object-class="LP" ! queue ! \
     gvawatermark name=gvawatermark ! videoconvert ! gvafpscounter ! \
     fpsdisplaysink video-sink=xvimagesink sync=false'.format(args.input, 
                                 args.detection_model,
@@ -74,8 +74,8 @@ def create_launch_string_disp():
 def create_launch_string1():
     return 'uridecodebin uri={} ! \
     videoconvert ! capsfilter caps=\"video/x-raw,format=BGRx\" ! \
-    gvadetect inference-id=inf_detect model={} model-proc={} device=GPU pre-proc=ie threshold=0.25 ! queue ! \
-    gvatrack tracking-type=iou ! queue ! \
+    gvadetect model-instance-id=inf_detect model={} model-proc={} device=GPU pre-process-backend=ie threshold=0.25 ! queue ! \
+    gvatrack tracking-type=short-term ! queue ! \
     gvawatermark name=gvawatermark ! videoconvert ! gvafpscounter ! \
     fakesink sync=false'.format(args.input, 
                                 args.detection_model,
