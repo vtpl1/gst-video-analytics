@@ -320,8 +320,12 @@ bool TensorToBBox(const std::map<std::string, InferenceBackend::OutputBlob::Ptr>
             classes = labels->n_values;
             g_value_array_free(labels);
         }
-        constexpr float input_size = 416;
-
+        //constexpr float input_size = 416;
+        gdouble input_size = 416;
+        if (!gst_structure_get_double(detection_result, "input_size", &input_size)) {
+            std::cout << "Input size not found defaulting to 416" << std::endl;
+            input_size = 416;
+        }
         const GValue *ganchors = gst_structure_get_value(detection_result, "anchors");
         std::vector<int> anchors;
         if(ganchors) {
@@ -351,18 +355,58 @@ bool TensorToBBox(const std::map<std::string, InferenceBackend::OutputBlob::Ptr>
             }
             const int side = dims[2];
             int anchor_offset = 0;
-            switch (side) {
-            case 13:
-                anchor_offset = 2 * 6;
-                break;
-            case 26:
-                anchor_offset = 2 * 3;
-                break;
-            case 52:
-                anchor_offset = 2 * 0;
-                break;
-            default:
-                throw std::runtime_error("Invalid output size dimension");
+            if (anchors.size() == 18) {        // YoloV3 nad Yolo 3l
+                //std::cout << "Here..... " << side << std::endl;
+                switch (side) {
+                    case 13:    //416
+                    case 17:    //544
+                    case 19:    //608
+                    case 25:
+                        anchor_offset = 2 * 6;
+                        break;
+                    case 26:    //416
+                    case 34:    //544
+                    case 38:    //608
+                    case 50:
+                        anchor_offset = 2 * 3;
+                        break;
+                    case 52:    //416                    
+                    case 68:    //544
+                    case 76:    //608
+                    case 100:
+                        anchor_offset = 2 * 0;
+                        break;
+                    default:
+                        std::cout << "-----Here..... " << side << std::endl;
+                        throw std::runtime_error("Invalid output size");
+                }
+                // switch (side) {
+                //     case 13:
+                //         anchor_offset = 2 * 6;
+                //         break;
+                //     case 26:
+                //         anchor_offset = 2 * 3;
+                //         break;
+                //     case 52:
+                //         anchor_offset = 2 * 0;
+                //         break;
+                //     default:
+                //         std::cout << "-----Here..... " << side << std::endl;
+                //         throw std::runtime_error("Invalid output size");
+                // }
+            } else if (anchors.size() == 12) { // tiny-YoloV3
+                switch (side) {
+                    case 13:
+                        anchor_offset = 2 * 3;
+                        break;
+                    case 26:
+                        anchor_offset = 2 * 0;
+                        break;
+                    default:
+                        throw std::runtime_error("Invalid output size");
+                }
+            } else { //??????
+                throw std::runtime_error("YoloV3: Invalid anchor size");
             }
 
             const float *output_blob = (const float *)blob->GetData();

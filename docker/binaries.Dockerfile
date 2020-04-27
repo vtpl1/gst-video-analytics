@@ -659,6 +659,12 @@ ENV HDDL_INSTALL_DIR=/opt/intel/dldt/inference-engine/external/hddl
 ARG GIT_INFO
 ARG SOURCE_REV
 
+RUN python3 -m pip install pyyaml scipy sklearn pynng zope.event requests paho-mqtt pycrypto pillow
+RUN apt update && apt install -y -q --no-install-recommends sudo nano && rm -rf /var/lib/apt/lists/*
+RUN cd /opt/intel/openvino/deployment_tools/model_optimizer/install_prerequisites && ./install_prerequisites_tf.sh
+RUN cd /opt/intel/openvino/deployment_tools/model_optimizer/install_prerequisites && ./install_prerequisites_onnx.sh
+RUN git clone https://github.com/PINTO0309/OpenVINO-YoloV3.git
+
 COPY . gst-video-analytics
 ARG ENABLE_PAHO_INSTALLATION=true
 ARG ENABLE_RDKAFKA_INSTALLATION=false
@@ -682,8 +688,9 @@ RUN mkdir -p gst-video-analytics/build \
         && make -j $(nproc) \
         && make install \
         && cd ../python && python3 -m pip install . \
-        && cd ../.. && rm -rf gst-video-analytics \
+        && cd .. && rm -rf build \
         && echo "/usr/lib/gst-video-analytics" >> /etc/ld.so.conf.d/opencv-dldt-gst.conf && ldconfig
 
 ENV GST_PLUGIN_PATH=/usr/lib/gstreamer-1.0:/usr/lib/gst-video-analytics/:/root/gst-video-analytics/
 #ENV PYTHONPATH=/root/gst-video-analytics/python:$PYTHONPATH
+

@@ -27,3 +27,9 @@ cmake-build-*/
 __pycache__/
 *.py[cod]
 *$py.class
+thirdparty/vas/include/**
+thirdparty/vas/Intel-Simplified-Software-License.txt
+thirdparty/json/nlohmann/json.hpp
+thirdparty/json/pboettch/json-schema-validator-2.0.0/**
+thirdparty/json/pboettch/jsonvalidator.tar.gz
+l_openvino_toolkit_p_2020.2.120.tgz

@@ -19,7 +19,7 @@ else
 fi
 
 BASEDIR=$(dirname "$0")
-docker build --squash -f ${BASEDIR}/${dockerfile} -t gst-video-analytics:$tag \
+docker build -f ${BASEDIR}/${dockerfile} -t gst-video-analytics:$tag \
     --build-arg http_proxy=${HTTP_PROXY:-$http_proxy} \
     --build-arg https_proxy=${HTTPS_PROXY:-$https_proxy} \
     ${BASEDIR}/..

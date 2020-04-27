@@ -11,17 +11,9 @@
       "converter": "tensor_to_bbox_yolo_v3",
       "input_size": 416.0,
       "labels": [
-        "LP",
-        "NoHelmet",
-        "Helmet",
-        "Bike",
-        "Auto",
-        "Car",
-        "HV",
-        "Bicycle",
-        "Human"
+        "head"
       ],
-      "anchors":[28, 33,  68, 37,  38, 70,  95,112,  64,168, 225,323]
+      "anchors":[11, 22,  14, 30,  20, 39,  28, 50,  40, 67,  55, 92,  77,129, 107,187, 162,293]
     }
   ]
 }

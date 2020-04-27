@@ -67,6 +67,8 @@ static void clip_rect(double &x, double &y, double &w, double &h, GstVideoInfo *
 }
 
 gboolean draw_label(GstGvaWatermark *gvawatermark, GstBuffer *buffer) {
+    if (!gvawatermark->is_draw)
+        return TRUE;
     // map GstBuffer to cv::Mat
     InferenceBackend::Image image;
     BufferMapContext mapContext;

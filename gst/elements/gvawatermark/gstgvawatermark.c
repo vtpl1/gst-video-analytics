@@ -20,6 +20,13 @@
 #define ELEMENT_LONG_NAME "Draw detection/classification/recognition results on top of video data"
 #define ELEMENT_DESCRIPTION "Draw detection/classification/recognition results on top of video data"
 
+enum {
+    PROP_0,
+    PROP_IS_DRAW
+};
+
+#define DEFAULT_IS_DRAW TRUE
+
 GST_DEBUG_CATEGORY_STATIC(gst_gva_watermark_debug_category);
 #define GST_CAT_DEFAULT gst_gva_watermark_debug_category
 
@@ -64,10 +71,18 @@ static void gst_gva_watermark_class_init(GstGvaWatermarkClass *klass) {
     base_transform_class->set_caps = GST_DEBUG_FUNCPTR(gst_gva_watermark_set_caps);
     base_transform_class->transform = NULL;
     base_transform_class->transform_ip = GST_DEBUG_FUNCPTR(gst_gva_watermark_transform_ip);
+
+    g_object_class_install_property(
+        gobject_class, PROP_IS_DRAW,
+        g_param_spec_boolean("is-draw", 
+                            "Draw results on video", "Draw result rectangle and labels on video",
+                            DEFAULT_IS_DRAW, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 }
 
 static void gst_gva_watermark_init(GstGvaWatermark *gvawatermark) {
-    UNUSED(gvawatermark);
+    GST_DEBUG_OBJECT(gvawatermark, "gst_gva_watermark_init");
+    GST_DEBUG_OBJECT(gvawatermark, "%s", GST_ELEMENT_NAME(GST_ELEMENT(gvawatermark)));
+    gvawatermark->is_draw = DEFAULT_IS_DRAW;
 }
 
 void gst_gva_watermark_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec) {
@@ -78,6 +93,9 @@ void gst_gva_watermark_set_property(GObject *object, guint property_id, const GV
     GST_DEBUG_OBJECT(gvawatermark, "set_property");
 
     switch (property_id) {
+    case PROP_IS_DRAW:
+        gvawatermark->is_draw = g_value_get_boolean(value);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
         break;
@@ -92,6 +110,9 @@ void gst_gva_watermark_get_property(GObject *object, guint property_id, GValue *
     GST_DEBUG_OBJECT(gvawatermark, "get_property");
 
     switch (property_id) {
+    case PROP_IS_DRAW:
+        g_value_set_boolean(value, gvawatermark->is_draw);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
         break;

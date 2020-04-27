@@ -24,6 +24,7 @@ typedef struct _GstGvaWatermarkClass GstGvaWatermarkClass;
 struct _GstGvaWatermark {
     GstBaseTransform base_gvawatermark;
     GstVideoInfo info;
+    gboolean is_draw;
 };
 
 struct _GstGvaWatermarkClass {
