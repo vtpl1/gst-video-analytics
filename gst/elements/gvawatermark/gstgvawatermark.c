@@ -75,7 +75,7 @@ static void gst_gva_watermark_class_init(GstGvaWatermarkClass *klass) {
     g_object_class_install_property(
         gobject_class, PROP_IS_DRAW,
         g_param_spec_boolean("is-draw", 
-                            "Draw results on video", "Draw result rectangle and labels on video",
+                            "Draw results on video", "Draw result rectangles and labels on video",
                             DEFAULT_IS_DRAW, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 }
 
