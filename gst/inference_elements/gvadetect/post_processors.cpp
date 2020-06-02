@@ -358,22 +358,25 @@ bool TensorToBBox(const std::map<std::string, InferenceBackend::OutputBlob::Ptr>
             if (anchors.size() == 18) {        // YoloV3 nad Yolo 3l
                 //std::cout << "Here..... " << side << std::endl;
                 switch (side) {
+                    case 8:     //256
                     case 13:    //416
                     case 17:    //544
                     case 19:    //608
-                    case 25:
+                    case 25:    //800
                         anchor_offset = 2 * 6;
                         break;
+                    case 16:     //256
                     case 26:    //416
                     case 34:    //544
                     case 38:    //608
-                    case 50:
+                    case 50:    //800
                         anchor_offset = 2 * 3;
                         break;
+                    case 32:     //256    
                     case 52:    //416                    
                     case 68:    //544
                     case 76:    //608
-                    case 100:
+                    case 100:   //800
                         anchor_offset = 2 * 0;
                         break;
                     default:
@@ -396,10 +399,18 @@ bool TensorToBBox(const std::map<std::string, InferenceBackend::OutputBlob::Ptr>
                 // }
             } else if (anchors.size() == 12) { // tiny-YoloV3
                 switch (side) {
-                    case 13:
+                    case 8:     //256
+                    case 13:    //416
+                    case 17:    //544
+                    case 19:    //608
+                    case 25:    //800
                         anchor_offset = 2 * 3;
                         break;
-                    case 26:
+                    case 16:     //256
+                    case 26:    //416
+                    case 34:    //544
+                    case 38:    //608
+                    case 50:    //800
                         anchor_offset = 2 * 0;
                         break;
                     default:
